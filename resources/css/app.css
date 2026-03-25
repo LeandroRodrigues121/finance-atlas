@@ -230,6 +230,14 @@ textarea:focus {
     height: 320px;
 }
 
+.chart-card-full {
+    margin-top: -4px;
+}
+
+.chart-holder-line {
+    height: 340px;
+}
+
 .split-grid {
     display: grid;
     gap: 16px;

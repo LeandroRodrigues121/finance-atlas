@@ -4,7 +4,68 @@ import { Chart, registerables } from 'chart.js';
 import api from '@/services/api';
 import { formatCurrency, monthName } from '@/utils/formatters';
 
-Chart.register(...registerables);
+const doughnutPercentagePlugin = {
+    id: 'doughnutPercentagePlugin',
+    afterDatasetsDraw(chart) {
+        if (chart.config.type !== 'doughnut') {
+            return;
+        }
+
+        const isEnabled = chart.options?.plugins?.doughnutPercentage?.enabled !== false;
+        if (!isEnabled) {
+            return;
+        }
+
+        const dataset = chart.data?.datasets?.[0];
+        if (!dataset) {
+            return;
+        }
+
+        const values = dataset.data.map((value) => Number(value || 0));
+        const total = values.reduce((sum, value) => sum + value, 0);
+
+        if (total <= 0) {
+            return;
+        }
+
+        const { ctx } = chart;
+        const meta = chart.getDatasetMeta(0);
+
+        ctx.save();
+        ctx.font = '700 12px Manrope, sans-serif';
+        ctx.fillStyle = '#132019';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        meta.data.forEach((arc, index) => {
+            const value = values[index] || 0;
+            if (value <= 0) {
+                return;
+            }
+
+            const percentage = (value / total) * 100;
+            if (percentage < 4) {
+                return;
+            }
+
+            const { x, y, startAngle, endAngle, outerRadius, innerRadius } = arc.getProps(
+                ['x', 'y', 'startAngle', 'endAngle', 'outerRadius', 'innerRadius'],
+                true,
+            );
+
+            const angle = (startAngle + endAngle) / 2;
+            const radius = innerRadius + (outerRadius - innerRadius) * 0.62;
+            const labelX = x + Math.cos(angle) * radius;
+            const labelY = y + Math.sin(angle) * radius;
+
+            ctx.fillText(`${Math.round(percentage)}%`, labelX, labelY);
+        });
+
+        ctx.restore();
+    },
+};
+
+Chart.register(...registerables, doughnutPercentagePlugin);
 
 const currentDate = new Date();
 const filters = reactive({
@@ -17,9 +78,11 @@ const loading = ref(false);
 const error = ref('');
 const incomeExpenseCanvas = ref(null);
 const categoryCanvas = ref(null);
+const trendLineCanvas = ref(null);
 
 let incomeExpenseChart = null;
 let categoryChart = null;
+let trendLineChart = null;
 
 const months = [...Array(12)].map((_, index) => ({
     value: index + 1,
@@ -42,7 +105,7 @@ const fetchDashboard = async () => {
         await nextTick();
         renderCharts();
     } catch {
-        error.value = 'Não foi possível carregar o dashboard.';
+        error.value = 'Nao foi possivel carregar o dashboard.';
     } finally {
         loading.value = false;
     }
@@ -53,7 +116,7 @@ const renderCharts = () => {
         return;
     }
 
-    if (!incomeExpenseCanvas.value || !categoryCanvas.value) {
+    if (!incomeExpenseCanvas.value || !categoryCanvas.value || !trendLineCanvas.value) {
         return;
     }
 
@@ -65,20 +128,28 @@ const renderCharts = () => {
         categoryChart.destroy();
     }
 
+    if (trendLineChart) {
+        trendLineChart.destroy();
+    }
+
+    const monthlyLabels = dashboard.value.charts.income_vs_expense_by_month.labels;
+    const monthlyIncomes = dashboard.value.charts.income_vs_expense_by_month.incomes;
+    const monthlyExpenses = dashboard.value.charts.income_vs_expense_by_month.expenses;
+
     incomeExpenseChart = new Chart(incomeExpenseCanvas.value, {
         type: 'bar',
         data: {
-            labels: dashboard.value.charts.income_vs_expense_by_month.labels,
+            labels: monthlyLabels,
             datasets: [
                 {
                     label: 'Receitas',
-                    data: dashboard.value.charts.income_vs_expense_by_month.incomes,
+                    data: monthlyIncomes,
                     backgroundColor: '#1f7a8c',
                     borderRadius: 8,
                 },
                 {
                     label: 'Despesas',
-                    data: dashboard.value.charts.income_vs_expense_by_month.expenses,
+                    data: monthlyExpenses,
                     backgroundColor: '#bf4342',
                     borderRadius: 8,
                 },
@@ -97,14 +168,15 @@ const renderCharts = () => {
 
     const categoryValues = [...dashboard.value.charts.expenses_by_category.values];
     const categoryLabels = [...dashboard.value.charts.expenses_by_category.labels];
+    const hasCategoryData = categoryValues.length > 0;
 
     categoryChart = new Chart(categoryCanvas.value, {
         type: 'doughnut',
         data: {
-            labels: categoryLabels.length ? categoryLabels : ['Sem despesas no período'],
+            labels: hasCategoryData ? categoryLabels : ['Sem despesas no periodo'],
             datasets: [
                 {
-                    data: categoryValues.length ? categoryValues : [1],
+                    data: hasCategoryData ? categoryValues : [1],
                     backgroundColor: [
                         '#1f7a8c',
                         '#bf4342',
@@ -122,9 +194,65 @@ const renderCharts = () => {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            cutout: '58%',
             plugins: {
                 legend: {
                     position: 'bottom',
+                },
+                doughnutPercentage: {
+                    enabled: hasCategoryData,
+                },
+            },
+        },
+    });
+
+    trendLineChart = new Chart(trendLineCanvas.value, {
+        type: 'line',
+        data: {
+            labels: monthlyLabels,
+            datasets: [
+                {
+                    label: 'Receitas',
+                    data: monthlyIncomes,
+                    borderColor: '#1f7a8c',
+                    backgroundColor: 'rgba(31, 122, 140, 0.15)',
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#1f7a8c',
+                },
+                {
+                    label: 'Despesas',
+                    data: monthlyExpenses,
+                    borderColor: '#bf4342',
+                    backgroundColor: 'rgba(191, 67, 66, 0.12)',
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#bf4342',
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => `R$ ${Number(value).toLocaleString('pt-BR')}`,
+                    },
                 },
             },
         },
@@ -140,6 +268,9 @@ onBeforeUnmount(() => {
     if (categoryChart) {
         categoryChart.destroy();
     }
+    if (trendLineChart) {
+        trendLineChart.destroy();
+    }
 });
 </script>
 
@@ -148,12 +279,12 @@ onBeforeUnmount(() => {
         <header class="page-header">
             <div>
                 <h2>Dashboard Financeiro</h2>
-                <p>Visão mensal e anual com indicadores estratégicos.</p>
+                <p>Visao mensal e anual com indicadores estrategicos.</p>
             </div>
 
             <div class="filters">
                 <label>
-                    Mês
+                    Mes
                     <select v-model.number="filters.month">
                         <option v-for="month in months" :key="month.value" :value="month.value">
                             {{ month.label }}
@@ -174,15 +305,15 @@ onBeforeUnmount(() => {
 
         <div class="cards-grid" v-if="dashboard">
             <article class="metric-card">
-                <h3>Receitas do mês</h3>
+                <h3>Receitas do mes</h3>
                 <strong>{{ formatCurrency(dashboard.monthly.income_total) }}</strong>
             </article>
             <article class="metric-card">
-                <h3>Despesas do mês</h3>
+                <h3>Despesas do mes</h3>
                 <strong>{{ formatCurrency(dashboard.monthly.expense_total) }}</strong>
             </article>
             <article class="metric-card">
-                <h3>Saldo do mês</h3>
+                <h3>Saldo do mes</h3>
                 <strong>{{ formatCurrency(dashboard.monthly.balance) }}</strong>
             </article>
             <article class="metric-card">
@@ -198,33 +329,40 @@ onBeforeUnmount(() => {
                 <strong>{{ formatCurrency(dashboard.annual.balance) }}</strong>
             </article>
             <article class="metric-card">
-                <h3>Comprometimento do mês</h3>
+                <h3>Comprometimento do mes</h3>
                 <strong>{{ dashboard.indicators.expense_commitment_percent }}%</strong>
             </article>
             <article class="metric-card">
-                <h3>Dívidas em aberto</h3>
+                <h3>Dividas em aberto</h3>
                 <strong>{{ formatCurrency(dashboard.indicators.open_debt_total) }}</strong>
             </article>
             <article class="metric-card">
-                <h3>Dívidas pagas</h3>
+                <h3>Dividas pagas</h3>
                 <strong>{{ formatCurrency(dashboard.indicators.paid_debt_total) }}</strong>
             </article>
         </div>
 
         <div class="charts-grid" v-if="dashboard">
             <article class="chart-card">
-                <h3>Receitas vs Despesas por Mês</h3>
+                <h3>Receitas vs Despesas por Mes</h3>
                 <div class="chart-holder">
                     <canvas ref="incomeExpenseCanvas" />
                 </div>
             </article>
 
             <article class="chart-card">
-                <h3>Despesas por Categoria no Mês</h3>
+                <h3>Despesas por Categoria no Mes</h3>
                 <div class="chart-holder">
                     <canvas ref="categoryCanvas" />
                 </div>
             </article>
         </div>
+
+        <article class="chart-card chart-card-full" v-if="dashboard">
+            <h3>Tendencia de Receitas x Despesas no Ano</h3>
+            <div class="chart-holder chart-holder-line">
+                <canvas ref="trendLineCanvas" />
+            </div>
+        </article>
     </section>
 </template>
