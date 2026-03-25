@@ -191,6 +191,11 @@ textarea:focus {
     gap: 14px;
 }
 
+.dashboard-cards-grid {
+    grid-template-columns: repeat(5, minmax(170px, 1fr));
+    gap: 16px;
+}
+
 .metric-card {
     background: var(--surface);
     border: 1px solid var(--line);
@@ -208,6 +213,14 @@ textarea:focus {
     font-size: 1.15rem;
     margin-top: 8px;
     display: inline-block;
+}
+
+.metric-value-positive {
+    color: #227a43;
+}
+
+.metric-value-negative {
+    color: #c03a3a;
 }
 
 .charts-grid {
@@ -231,7 +244,7 @@ textarea:focus {
 }
 
 .chart-card-full {
-    margin-top: -4px;
+    margin-top: 24px;
 }
 
 .chart-holder-line {
@@ -399,6 +412,10 @@ th {
     .split-grid {
         grid-template-columns: 1fr;
     }
+
+    .dashboard-cards-grid {
+        grid-template-columns: repeat(3, minmax(170px, 1fr));
+    }
 }
 
 @media (max-width: 720px) {
@@ -422,6 +439,16 @@ th {
     }
 
     .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-cards-grid {
+        grid-template-columns: repeat(2, minmax(150px, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .dashboard-cards-grid {
         grid-template-columns: 1fr;
     }
 }

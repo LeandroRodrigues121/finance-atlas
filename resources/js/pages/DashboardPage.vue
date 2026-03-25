@@ -89,6 +89,16 @@ const months = [...Array(12)].map((_, index) => ({
     label: monthName(index + 1),
 }));
 
+const balanceValueClass = (value) => ({
+    'metric-value-positive': Number(value) > 0,
+    'metric-value-negative': Number(value) < 0,
+});
+
+const commitmentValueClass = (value) => ({
+    'metric-value-negative': Number(value) > 70,
+    'metric-value-positive': Number(value) <= 70,
+});
+
 const fetchDashboard = async () => {
     loading.value = true;
     error.value = '';
@@ -169,6 +179,7 @@ const renderCharts = () => {
     const categoryValues = [...dashboard.value.charts.expenses_by_category.values];
     const categoryLabels = [...dashboard.value.charts.expenses_by_category.labels];
     const hasCategoryData = categoryValues.length > 0;
+    const useRightLegend = window.innerWidth > 1200;
 
     categoryChart = new Chart(categoryCanvas.value, {
         type: 'doughnut',
@@ -197,7 +208,21 @@ const renderCharts = () => {
             cutout: '58%',
             plugins: {
                 legend: {
-                    position: 'bottom',
+                    position: useRightLegend ? 'right' : 'bottom',
+                    align: 'center',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        padding: 14,
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        color: '#45534b',
+                        font: {
+                            family: 'Manrope',
+                            size: 12,
+                            weight: '600',
+                        },
+                    },
                 },
                 doughnutPercentage: {
                     enabled: hasCategoryData,
@@ -303,7 +328,7 @@ onBeforeUnmount(() => {
 
         <p class="error-text" v-if="error">{{ error }}</p>
 
-        <div class="cards-grid" v-if="dashboard">
+        <div class="cards-grid dashboard-cards-grid" v-if="dashboard">
             <article class="metric-card">
                 <h3>Receitas do mes</h3>
                 <strong>{{ formatCurrency(dashboard.monthly.income_total) }}</strong>
@@ -314,7 +339,9 @@ onBeforeUnmount(() => {
             </article>
             <article class="metric-card">
                 <h3>Saldo do mes</h3>
-                <strong>{{ formatCurrency(dashboard.monthly.balance) }}</strong>
+                <strong :class="balanceValueClass(dashboard.monthly.balance)">
+                    {{ formatCurrency(dashboard.monthly.balance) }}
+                </strong>
             </article>
             <article class="metric-card">
                 <h3>Receitas do ano</h3>
@@ -330,7 +357,9 @@ onBeforeUnmount(() => {
             </article>
             <article class="metric-card">
                 <h3>Comprometimento do mes</h3>
-                <strong>{{ dashboard.indicators.expense_commitment_percent }}%</strong>
+                <strong :class="commitmentValueClass(dashboard.indicators.expense_commitment_percent)">
+                    {{ dashboard.indicators.expense_commitment_percent }}%
+                </strong>
             </article>
             <article class="metric-card">
                 <h3>Dividas em aberto</h3>
