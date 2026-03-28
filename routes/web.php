@@ -23,5 +23,9 @@ Route::prefix('api')->group(function (): void {
     });
 });
 
-Route::view('/', 'app');
-Route::view('/{any}', 'app')->where('any', '^(?!api).*$');
+Route::get('/', function () {
+    return response()->json([
+        'name' => 'Finance Atlas API',
+        'status' => 'ok',
+    ]);
+});
