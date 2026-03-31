@@ -29,6 +29,7 @@
    - `DB_USERNAME=...` (Aiven)
    - `DB_PASSWORD=...` (Aiven)
    - `MYSQL_ATTR_SSL_CA=/etc/ssl/certs/ca-certificates.crt`
+   - `MYSQL_ATTR_SSL_VERIFY_SERVER_CERT=false`
    - `SESSION_DRIVER=database`
    - `SESSION_SECURE_COOKIE=true`
    - `SESSION_SAME_SITE=none`
