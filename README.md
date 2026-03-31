@@ -11,6 +11,7 @@ Back-end em Laravel responsavel pelas regras de negocio, autenticacao e endpoint
 ## Endpoints principais
 
 - `POST /api/login`
+- `POST /api/register`
 - `POST /api/logout`
 - `GET /api/me`
 - `GET|POST|PUT|DELETE /api/incomes`
@@ -42,4 +43,3 @@ API em: `http://127.0.0.1:8000`
 ## Front-end separado
 
 O front agora fica em `../Front-end` e deve ser executado em outro terminal.
-
