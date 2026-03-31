@@ -3,6 +3,23 @@
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 
+$mysqlSslCa = env('MYSQL_ATTR_SSL_CA');
+$mysqlSslCa = is_string($mysqlSslCa) && trim($mysqlSslCa) !== '' ? $mysqlSslCa : null;
+
+$mysqlSslVerifyServerCert = filter_var(
+    env('MYSQL_ATTR_SSL_VERIFY_SERVER_CERT', false),
+    FILTER_VALIDATE_BOOLEAN,
+    FILTER_NULL_ON_FAILURE
+);
+$mysqlSslVerifyServerCert = $mysqlSslVerifyServerCert ?? false;
+
+$mysqlSslVerifyServerCertOption = null;
+if (defined(Mysql::class.'::ATTR_SSL_VERIFY_SERVER_CERT')) {
+    $mysqlSslVerifyServerCertOption = constant(Mysql::class.'::ATTR_SSL_VERIFY_SERVER_CERT');
+} elseif (defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')) {
+    $mysqlSslVerifyServerCertOption = PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT;
+}
+
 return [
 
     /*
@@ -60,10 +77,10 @@ return [
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
+                (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => $mysqlSslCa,
                 ...(
-                    defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')
-                        ? [PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => env('MYSQL_ATTR_SSL_VERIFY_SERVER_CERT', false)]
+                    $mysqlSslVerifyServerCertOption !== null
+                        ? [$mysqlSslVerifyServerCertOption => $mysqlSslVerifyServerCert]
                         : []
                 ),
             ], static fn (mixed $value): bool => $value !== null) : [],
@@ -85,10 +102,10 @@ return [
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
-                (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
+                (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => $mysqlSslCa,
                 ...(
-                    defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')
-                        ? [PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => env('MYSQL_ATTR_SSL_VERIFY_SERVER_CERT', false)]
+                    $mysqlSslVerifyServerCertOption !== null
+                        ? [$mysqlSslVerifyServerCertOption => $mysqlSslVerifyServerCert]
                         : []
                 ),
             ], static fn (mixed $value): bool => $value !== null) : [],
