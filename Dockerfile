@@ -20,4 +20,4 @@ RUN php -v \
 
 EXPOSE 10000
 
-CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-10000}"]
+CMD ["sh", "-c", "if [ \"${RUN_MIGRATIONS_ON_STARTUP:-true}\" = \"true\" ]; then echo \"Running database migrations...\" && php artisan migrate --force; fi && echo \"Starting API server...\" && php artisan serve --host=0.0.0.0 --port=${PORT:-10000}"]
