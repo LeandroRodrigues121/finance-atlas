@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -66,6 +67,18 @@ class DashboardController extends Controller
         $paidDebtTotal = (float) $user->debts()->sum('paid_amount');
         $expenseCommitment = $monthlyIncome > 0 ? round(($monthlyExpense / $monthlyIncome) * 100, 2) : 0;
 
+        $basePeriod = Carbon::create($year, $month, 1, 0, 0, 0, config('app.timezone'));
+        $recentIncomes = collect(range(0, 2))->map(function (int $offset) use ($user, $basePeriod): float {
+            $targetPeriod = $basePeriod->copy()->subMonths($offset);
+
+            return (float) $user->incomes()
+                ->whereYear('date', $targetPeriod->year)
+                ->whereMonth('date', $targetPeriod->month)
+                ->sum('amount');
+        });
+
+        $recommendedExpenseLimit = round(((float) $recentIncomes->avg()) * 0.7, 2);
+
         return response()->json([
             'period' => [
                 'month' => $month,
@@ -96,6 +109,7 @@ class DashboardController extends Controller
                 'expense_commitment_percent' => $expenseCommitment,
                 'open_debt_total' => $openDebtTotal,
                 'paid_debt_total' => $paidDebtTotal,
+                'recommended_expense_limit' => $recommendedExpenseLimit,
             ],
             'monthly_balance_timeline' => $balanceByMonth,
         ]);

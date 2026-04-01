@@ -28,7 +28,7 @@ class DashboardApiTest extends TestCase
                     'income_vs_expense_by_month' => ['labels', 'incomes', 'expenses'],
                     'expenses_by_category' => ['labels', 'values'],
                 ],
-                'indicators' => ['expense_commitment_percent', 'open_debt_total', 'paid_debt_total'],
+                'indicators' => ['expense_commitment_percent', 'open_debt_total', 'paid_debt_total', 'recommended_expense_limit'],
             ]);
     }
 }
