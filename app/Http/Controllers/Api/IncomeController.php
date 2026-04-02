@@ -11,31 +11,31 @@ class IncomeController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = $request->user()->incomes()->latest('date');
+        $tableQuery = $request->user()->incomes()->latest('date');
+        $this->applyFilters($tableQuery, $request);
 
-        if ($request->filled('year')) {
-            $query->whereYear('date', (int) $request->integer('year'));
-        }
+        $summaryQuery = $request->user()->incomes();
+        $this->applyFilters($summaryQuery, $request);
 
-        if ($request->filled('month')) {
-            $query->whereMonth('date', (int) $request->integer('month'));
-        }
-
-        if ($request->filled('type')) {
-            $query->where('type', $request->string('type')->toString());
-        }
-
-        if ($request->filled('category')) {
-            $query->where('category', $request->string('category')->toString());
-        }
-
-        $incomes = $query->get();
+        $incomes = $tableQuery->get();
+        $breakdownByType = $summaryQuery
+            ->selectRaw('type, COUNT(*) as total_count, SUM(amount) as total_amount')
+            ->groupBy('type')
+            ->orderByDesc('total_amount')
+            ->get()
+            ->map(fn ($row) => [
+                'type' => $row->type,
+                'total_count' => (int) $row->total_count,
+                'total_amount' => (float) $row->total_amount,
+            ])
+            ->values();
 
         return response()->json([
             'data' => $incomes,
             'meta' => [
                 'total_amount' => (float) $incomes->sum('amount'),
                 'count' => $incomes->count(),
+                'breakdown_by_type' => $breakdownByType,
             ],
         ]);
     }
@@ -97,5 +97,24 @@ class IncomeController extends Controller
         return response()->json([
             'message' => 'Receita removida com sucesso.',
         ]);
+    }
+
+    private function applyFilters($query, Request $request): void
+    {
+        if ($request->filled('year')) {
+            $query->whereYear('date', (int) $request->integer('year'));
+        }
+
+        if ($request->filled('month')) {
+            $query->whereMonth('date', (int) $request->integer('month'));
+        }
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->string('type')->toString());
+        }
+
+        if ($request->filled('category')) {
+            $query->where('category', $request->string('category')->toString());
+        }
     }
 }
