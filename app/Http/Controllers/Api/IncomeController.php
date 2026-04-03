@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Income;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -18,7 +21,10 @@ class IncomeController extends Controller
         $this->applyFilters($summaryQuery, $request);
 
         $incomes = $tableQuery->get();
-        $breakdownByType = $summaryQuery
+        $totalAmount = (float) (clone $summaryQuery)->sum('amount');
+        $totalCount = (int) (clone $summaryQuery)->count();
+
+        $breakdownByType = (clone $summaryQuery)
             ->selectRaw('type, COUNT(*) as total_count, SUM(amount) as total_amount')
             ->groupBy('type')
             ->orderByDesc('total_amount')
@@ -33,23 +39,17 @@ class IncomeController extends Controller
         return response()->json([
             'data' => $incomes,
             'meta' => [
-                'total_amount' => (float) $incomes->sum('amount'),
-                'count' => $incomes->count(),
+                'total_amount' => $totalAmount,
+                'count' => $totalCount,
                 'breakdown_by_type' => $breakdownByType,
+                'previous_period' => $this->buildPreviousPeriodMeta($request, $totalAmount),
             ],
         ]);
     }
 
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'description' => ['required', 'string', 'max:255'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'date' => ['required', 'date'],
-            'category' => ['required', 'string', 'max:100'],
-            'type' => ['required', 'in:'.implode(',', Income::TYPES)],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validate($this->rules());
 
         $income = $request->user()->incomes()->create($validated);
 
@@ -72,14 +72,7 @@ class IncomeController extends Controller
     {
         abort_if($income->user_id !== $request->user()->id, 403);
 
-        $validated = $request->validate([
-            'description' => ['required', 'string', 'max:255'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'date' => ['required', 'date'],
-            'category' => ['required', 'string', 'max:100'],
-            'type' => ['required', 'in:'.implode(',', Income::TYPES)],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validate($this->rules());
 
         $income->update($validated);
 
@@ -99,13 +92,66 @@ class IncomeController extends Controller
         ]);
     }
 
-    private function applyFilters($query, Request $request): void
+    /**
+     * @return array<string, array<int, string>|string>
+     */
+    private function rules(): array
     {
-        if ($request->filled('year')) {
+        return [
+            'description' => ['required', 'string', 'max:255'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'date' => ['required', 'date'],
+            'category' => ['required', 'string', 'max:100'],
+            'type' => ['required', 'in:' . implode(',', Income::TYPES)],
+            'status' => ['required', 'in:' . implode(',', Income::STATUSES)],
+            'notes' => ['nullable', 'string'],
+        ];
+    }
+
+    private function buildPreviousPeriodMeta(Request $request, float $currentTotalAmount): array
+    {
+        $referencePeriod = $this->resolveReferencePeriod($request);
+        $previousPeriod = $referencePeriod->subMonth();
+
+        $previousPeriodQuery = $request->user()->incomes();
+        $this->applyFilters($previousPeriodQuery, $request, false);
+        $previousPeriodQuery
+            ->whereYear('date', $previousPeriod->year)
+            ->whereMonth('date', $previousPeriod->month);
+
+        $previousTotalAmount = (float) $previousPeriodQuery->sum('amount');
+        $deltaAmount = round($currentTotalAmount - $previousTotalAmount, 2);
+        $deltaPercentage = $previousTotalAmount > 0
+            ? round(($deltaAmount / $previousTotalAmount) * 100, 1)
+            : null;
+
+        return [
+            'month' => $previousPeriod->month,
+            'year' => $previousPeriod->year,
+            'label' => $previousPeriod
+                ->locale((string) config('app.locale'))
+                ->translatedFormat('F \d\e Y'),
+            'total_amount' => $previousTotalAmount,
+            'delta_amount' => $deltaAmount,
+            'delta_percentage' => $deltaPercentage,
+        ];
+    }
+
+    private function resolveReferencePeriod(Request $request): CarbonImmutable
+    {
+        $month = $request->filled('month') ? (int) $request->integer('month') : (int) now()->month;
+        $year = $request->filled('year') ? (int) $request->integer('year') : (int) now()->year;
+
+        return CarbonImmutable::create($year, $month, 1, 0, 0, 0, config('app.timezone'));
+    }
+
+    private function applyFilters(Builder|HasMany $query, Request $request, bool $includePeriod = true): void
+    {
+        if ($includePeriod && $request->filled('year')) {
             $query->whereYear('date', (int) $request->integer('year'));
         }
 
-        if ($request->filled('month')) {
+        if ($includePeriod && $request->filled('month')) {
             $query->whereMonth('date', (int) $request->integer('month'));
         }
 

@@ -17,6 +17,11 @@ class Income extends Model
         'outros',
     ];
 
+    public const STATUSES = [
+        'recebido',
+        'pendente',
+    ];
+
     protected $fillable = [
         'user_id',
         'description',
@@ -24,6 +29,7 @@ class Income extends Model
         'date',
         'category',
         'type',
+        'status',
         'notes',
     ];
 

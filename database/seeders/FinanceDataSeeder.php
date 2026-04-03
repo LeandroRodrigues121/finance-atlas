@@ -22,18 +22,20 @@ class FinanceDataSeeder extends Seeder
         }
 
         $year = now()->year;
+        $currentMonth = now()->month;
 
         foreach (range(1, 12) as $month) {
             Income::updateOrCreate(
                 [
                     'user_id' => $user->id,
-                    'description' => "Salário $month/$year",
+                    'description' => "Salario $month/$year",
                     'date' => now()->setDate($year, $month, 5)->toDateString(),
                 ],
                 [
                     'amount' => 7500 + ($month * 50),
                     'category' => 'Trabalho',
                     'type' => 'salario',
+                    'status' => 'recebido',
                     'notes' => 'Receita fixa mensal.',
                 ]
             );
@@ -49,7 +51,25 @@ class FinanceDataSeeder extends Seeder
                         'amount' => 900 + ($month * 15),
                         'category' => 'Projetos',
                         'type' => 'renda_extra',
+                        'status' => $month === $currentMonth ? 'pendente' : 'recebido',
                         'notes' => 'Renda extra de projetos paralelos.',
+                    ]
+                );
+            }
+
+            if ($month % 3 === 1) {
+                Income::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'description' => "Venda $month/$year",
+                        'date' => now()->setDate($year, $month, 1)->toDateString(),
+                    ],
+                    [
+                        'amount' => 1300 + ($month * 25),
+                        'category' => 'Vendas',
+                        'type' => 'outros',
+                        'status' => 'recebido',
+                        'notes' => 'Entrada eventual com itens vendidos.',
                     ]
                 );
             }
@@ -59,7 +79,7 @@ class FinanceDataSeeder extends Seeder
                 ['Supermercado', 'alimentacao', 780 + ($month * 20), 'paga'],
                 ['Transporte', 'transporte', 380, 'paga'],
                 ['Lazer', 'lazer', 260 + ($month * 10), 'pendente'],
-                ['Plano de Saúde', 'saude', 450, 'paga'],
+                ['Plano de Saude', 'saude', 450, 'paga'],
                 ['Internet e Energia', 'contas_fixas', 520, 'paga'],
             ];
 
@@ -67,14 +87,14 @@ class FinanceDataSeeder extends Seeder
                 Expense::updateOrCreate(
                     [
                         'user_id' => $user->id,
-                        'description' => $expense[0]." $month/$year",
+                        'description' => $expense[0] . " $month/$year",
                         'date' => now()->setDate($year, $month, 8 + $index)->toDateString(),
                     ],
                     [
                         'amount' => $expense[2],
                         'category' => $expense[1],
-                        'status' => $month < now()->month ? 'paga' : $expense[3],
-                        'notes' => 'Lançamento automático de exemplo.',
+                        'status' => $month < $currentMonth ? 'paga' : $expense[3],
+                        'notes' => 'Lancamento automatico de exemplo.',
                     ]
                 );
             }
@@ -83,7 +103,7 @@ class FinanceDataSeeder extends Seeder
         Debt::updateOrCreate(
             [
                 'user_id' => $user->id,
-                'description' => 'Cartão de crédito parcelado',
+                'description' => 'Cartao de credito parcelado',
             ],
             [
                 'total_amount' => 4800,
@@ -97,14 +117,14 @@ class FinanceDataSeeder extends Seeder
         Debt::updateOrCreate(
             [
                 'user_id' => $user->id,
-                'description' => 'Empréstimo pessoal',
+                'description' => 'Emprestimo pessoal',
             ],
             [
                 'total_amount' => 12000,
                 'paid_amount' => 6000,
                 'due_date' => now()->addMonths(18)->toDateString(),
                 'status' => 'pendente',
-                'notes' => 'Empréstimo para reforma residencial.',
+                'notes' => 'Emprestimo para reforma residencial.',
             ]
         );
     }
