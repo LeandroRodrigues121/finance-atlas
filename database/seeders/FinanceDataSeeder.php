@@ -75,12 +75,12 @@ class FinanceDataSeeder extends Seeder
             }
 
             $expenses = [
-                ['Aluguel', 'moradia', 2100, 'paga'],
-                ['Supermercado', 'alimentacao', 780 + ($month * 20), 'paga'],
-                ['Transporte', 'transporte', 380, 'paga'],
-                ['Lazer', 'lazer', 260 + ($month * 10), 'pendente'],
-                ['Plano de Saude', 'saude', 450, 'paga'],
-                ['Internet e Energia', 'contas_fixas', 520, 'paga'],
+                ['Aluguel', 'moradia', 2100, 'Transferencia', 'paga'],
+                ['Supermercado', 'alimentacao', 780 + ($month * 20), 'Nubank', 'paga'],
+                ['Transporte', 'transporte', 380, 'Debito', 'paga'],
+                ['Lazer', 'lazer', 260 + ($month * 10), 'Cartao Inter', 'pendente'],
+                ['Plano de Saude', 'saude', 450, 'Debito automatico', 'paga'],
+                ['Internet e Energia', 'contas_fixas', 520, 'Nubank', 'paga'],
             ];
 
             foreach ($expenses as $index => $expense) {
@@ -93,7 +93,8 @@ class FinanceDataSeeder extends Seeder
                     [
                         'amount' => $expense[2],
                         'category' => $expense[1],
-                        'status' => $month < $currentMonth ? 'paga' : $expense[3],
+                        'payment_method' => $expense[3],
+                        'status' => $month < $currentMonth ? 'paga' : $expense[4],
                         'notes' => 'Lancamento automatico de exemplo.',
                     ]
                 );
