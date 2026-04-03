@@ -40,6 +40,23 @@ php artisan serve
 
 API em: `http://127.0.0.1:8000`
 
+Observacao:
+
+- Neste projeto, `php artisan serve` foi ajustado para rodar em modo compativel com Laravel Herd no Windows.
+- Alteracoes no arquivo `.env` nao reiniciam o servidor automaticamente. Se voce mudar variaveis de ambiente, pare e suba o servidor novamente.
+
+Para rodar tudo junto no back-end:
+
+```powershell
+composer dev
+```
+
+Se quiser acompanhar logs com `pail`, rode separadamente em um ambiente que tenha a extensao `pcntl` disponivel:
+
+```powershell
+composer logs
+```
+
 ## Front-end separado
 
 O front agora fica em `../Front-end` e deve ser executado em outro terminal.
